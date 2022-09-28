@@ -49,9 +49,10 @@ contract OnlineTest {
         _;
     }
 
-    function createExams(uint _reward,uint _userSubmitFee) public payable satisfyCondition{ // Create Exams 
+    function createExams(uint _reward,uint _userSubmitFee) public payable  satisfyCondition{ // Create Exams 
         require(msg.sender==adminAddr,"You must be Admin to Create Exam");
-        require(msg.value >= (_reward+adminEntranceFee),"Not enough Ether to Create Exam and Pay Winner");
+        require(msg.sender.balance > (_reward+adminEntranceFee),"Not enough Ether to Create Exam and Pay Winner");
+        require(msg.value >= adminEntranceFee,"Value admin send to contract must greater than admin fee"); //the value tranfer to contract 
         examCode++; // generate new examCode
         examCodes.push(examCode);// push examCode to array
         exams[examCode].adminAddr = msg.sender; //update admin address of the exams
@@ -59,13 +60,12 @@ contract OnlineTest {
         exams[examCode].examState=EXAM_STATE.OPEN; //set state
         exams[examCode].userSubmitFee=_userSubmitFee; // set user submit fee
         examFund += adminEntranceFee;
-        payable(address(this)).send(adminEntranceFee); //send admin fee to this contract
-        //TODO: maybe tranfer fee to contract here
     }
 
     function submitTest(uint _examCode,string memory _answer) public payable { // user submit their exam
         require(exams[_examCode].examState==EXAM_STATE.OPEN,"Cannot submit yet!");
-        require(msg.value >= exams[_examCode].userSubmitFee* 10**18,"Not enough Ether to submit your exam!");  
+        require(msg.sender.balance >= exams[_examCode].userSubmitFee,"Not enough Ether to submit your exam!");  
+        require(msg.value>=exams[_examCode].userSubmitFee,"Value user send to contract must greater than user submit fee");//value tranfer to contract
         UserExam memory userExam;
         userExam.userAddr = msg.sender;
         userExam.examCode = _examCode;
@@ -73,8 +73,6 @@ contract OnlineTest {
         userExam.submitTime = block.timestamp;
         userExams.push(userExam);
         examFund += exams[_examCode].userSubmitFee;
-        payable(address(this)).send(exams[_examCode].userSubmitFee); //send user submit fee to this contract
-        //TODO: maybe user  need to tranfer fee here
     }
 
     function endSubmit(uint _examCode) public { // admin end all user submit
@@ -83,7 +81,7 @@ contract OnlineTest {
         exams[_examCode].examState=EXAM_STATE.ENDSUBMIT; // Change state to ENDSUBMIT
     }
 
-    function submitAnswer(uint _examCode, string memory _answer) public payable { // Admin submit answer
+    function submitAnswer(uint _examCode, string memory _answer) public { // Admin submit answer
         require(msg.sender==exams[_examCode].adminAddr,"You need to be Admin to submit answer!");
         require(exams[_examCode].examState==EXAM_STATE.ENDSUBMIT,"Admin Can't submit answer yet!");
         exams[_examCode].answer = _answer;
@@ -91,6 +89,7 @@ contract OnlineTest {
     }
     function caculateWinner(uint _examCode) public { // Caculate winner
         require(exams[_examCode].adminAddr == msg.sender,"Only admin can caculate winner!");
+        require(exams[_examCode].examState==EXAM_STATE.CACULATING_WINNER,"Admin does not submit answer yet!");
         for (uint i = 0; i < userExams.length ; i++) { //travels through array userExams
             if(userExams[i].examCode == _examCode){ //check userExams in which exams
                 if((keccak256(abi.encodePacked(userExams[i].answer))) == (keccak256(abi.encodePacked(exams[_examCode].answer)))){
@@ -141,8 +140,8 @@ contract OnlineTest {
         return (_reward+adminEntranceFee)* 10**18;
     }
 
-    function withdraw() public { // with draw fund exam
-        require(msg.sender == contractOwner);
+    function withdraw() public  { // with draw fund exam
+        require(msg.sender == contractOwner,"You must be contract owner to withdraw money!");
         payable(contractOwner).transfer(examFund); 
     }
 
