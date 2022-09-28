@@ -136,11 +136,8 @@ contract OnlineTest {
     function getAccountBalance() public view returns (uint){
         return msg.sender.balance;
     }
-     function viewValue(uint _reward,uint _userSubmitFee) public view returns (uint){
-        return (_reward+adminEntranceFee)* 10**18;
-    }
-
-    function withdraw() public  { // with draw fund exam
+    
+    function withdraw() public payable { // with draw fund exam
         require(msg.sender == contractOwner,"You must be contract owner to withdraw money!");
         payable(contractOwner).transfer(examFund); 
     }
