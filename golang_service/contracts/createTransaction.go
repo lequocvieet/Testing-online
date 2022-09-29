@@ -3,8 +3,9 @@ package contracts
 import (
 	"context"
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
-	"golang_standard/album"
+	"golang_service/online_test"
 	"math/big"
 	"os"
 
@@ -14,55 +15,67 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-func GetContract() (*album.Album, *bind.TransactOpts) {
+func GetContract(privateKeyAddress string, value uint64) (*online_test.OnlineTest, *bind.TransactOpts) {
 	// address of etherum testnet node
-	infura := "https://goerli.infura.io/v3/0c84ae418d3042a490f3f8f46bd823c4"
-	client, err := ethclient.Dial(infura)
+	local_ganache := "http://127.0.0.1:7545"
+	client, err := ethclient.Dial(local_ganache)
 	if err != nil {
 		panic(err)
 	}
 	deployed_contract_address := os.Getenv("DEPLOYED_CONTRACT_ADDRESS")
-	conn, err := album.NewAlbum(common.HexToAddress(deployed_contract_address), client)
+	conn, err := online_test.NewOnlineTest(common.HexToAddress(deployed_contract_address), client)
 	if err != nil {
 		panic(err)
 	}
-	auth := GetAccountAuth(client, os.Getenv("PRIVATE_KEY"))
+
+	var auth *bind.TransactOpts
+	if privateKeyAddress != "" {
+		auth, err = GetAccountAuth(client, privateKeyAddress, value)
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	return conn, auth
 }
 
-func GetAccountAuth(client *ethclient.Client, privateKeyAddress string) *bind.TransactOpts {
+func GetAccountAuth(client *ethclient.Client, privateKeyAddress string, value uint64) (*bind.TransactOpts, error) {
 
 	privateKey, err := crypto.HexToECDSA(privateKeyAddress)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	publicKey := privateKey.Public()
 	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
 	if !ok {
-		panic("invalid key")
+		return nil, err
 	}
 
 	fromAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
 	fmt.Println(fromAddress)
 	nonce, err := client.PendingNonceAt(context.Background(), fromAddress)
 	if err != nil {
-		panic(err)
+		return nil, errors.New("PendingNonce error!")
 	}
 	fmt.Println("nounce=", nonce)
 	chainID, err := client.ChainID(context.Background())
 	if err != nil {
-		panic(err)
+		return nil, errors.New("ChainID error!")
 	}
 	fmt.Println("ChainID", chainID)
 	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, chainID)
 	if err != nil {
-		panic(err)
+		return nil, errors.New("NewKeyedTransactorWithChainID error!")
 	}
 	auth.Nonce = big.NewInt(int64(nonce))
-	auth.Value = big.NewInt(0)      // in wei
+	if value != 0 {
+		auth.Value = big.NewInt(int64(value)) // in wei
+	} else {
+		auth.Value = big.NewInt(0) // in wei
+	}
 	auth.GasLimit = uint64(3000000) // in units
 	auth.GasPrice = big.NewInt(1000000)
 
-	return auth
+	return auth, nil
 }

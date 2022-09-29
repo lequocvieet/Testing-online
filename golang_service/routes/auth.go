@@ -3,10 +3,10 @@ package routes
 import (
 	"context"
 	"fmt"
-	jwt "golang_standard/auth"
-	db "golang_standard/database"
-	"golang_standard/models"
-	res "golang_standard/utils"
+	jwt "golang_service/auth"
+	db "golang_service/database"
+	"golang_service/models"
+	res "golang_service/utils"
 	"net/http"
 
 	"github.com/asaskevich/govalidator"

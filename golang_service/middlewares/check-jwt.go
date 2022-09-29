@@ -2,8 +2,8 @@ package middlewares
 
 import (
 	"errors"
-	jwt "golang_standard/auth"
-	res "golang_standard/utils"
+	jwt "golang_service/auth"
+	res "golang_service/utils"
 	"net/http"
 )
 
