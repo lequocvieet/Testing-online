@@ -5,8 +5,9 @@ import (
 	"log"
 	"net/http"
 
+	db "golang_service/database"
+	"golang_service/handler"
 	"golang_service/middlewares"
-	"golang_service/routes"
 
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
@@ -18,19 +19,20 @@ func main() {
 		log.Fatalf("Error getting env, %v", err)
 	}
 
+	DB := db.Init()
+	h := handler.New(DB)
 	router := mux.NewRouter()
-
-	router.Handle("/auth/login", http.HandlerFunc(routes.Login)).Methods("POST")
-	router.Handle("/auth/register", http.HandlerFunc(routes.Register)).Methods("POST")
-	router.Handle("/choose-admin", http.HandlerFunc(middlewares.CheckJwt(routes.ChooseAdmin))).Methods("POST")
-	router.Handle("/create-exam", http.HandlerFunc(middlewares.CheckJwt(routes.CreateExams))).Methods("POST")
-	router.Handle("/submit-test", http.HandlerFunc(middlewares.CheckJwt(routes.SubmitTest))).Methods("POST")
-	router.Handle("/end-submit", http.HandlerFunc(middlewares.CheckJwt(routes.EndSubmit))).Methods("POST")
-	router.Handle("/submit-answer", http.HandlerFunc(middlewares.CheckJwt(routes.SubmitAnswer))).Methods("POST")
-	router.Handle("/caculate-winner", http.HandlerFunc(middlewares.CheckJwt(routes.CaculateWinner))).Methods("POST")
-	router.Handle("/withdraw", http.HandlerFunc(middlewares.CheckJwt(routes.Withdraw))).Methods("POST")
-	router.Handle("/check-account-balance", http.HandlerFunc(middlewares.CheckJwt(routes.CheckAccountBalance))).Methods("POST")
-	router.Handle("/check-contract-balance", http.HandlerFunc(middlewares.CheckJwt(routes.CheckContractBalance))).Methods("GET")
+	router.HandleFunc("/auth/login", h.Login).Methods(http.MethodPost)
+	router.HandleFunc("/auth/register", h.Register).Methods(http.MethodPost)
+	router.HandleFunc("/choose-admin", middlewares.CheckJwt(h.ChooseAdmin)).Methods(http.MethodPost)
+	router.HandleFunc("/create-exam", middlewares.CheckJwt(h.CreateExams)).Methods(http.MethodPost)
+	router.HandleFunc("/submit-test", middlewares.CheckJwt(h.SubmitTest)).Methods(http.MethodPost)
+	router.HandleFunc("/end-submit", middlewares.CheckJwt(h.EndSubmit)).Methods(http.MethodPost)
+	router.HandleFunc("/submit-answer", middlewares.CheckJwt(h.SubmitAnswer)).Methods(http.MethodPost)
+	router.HandleFunc("/caculate-winner", middlewares.CheckJwt(h.CaculateWinner)).Methods(http.MethodPost)
+	router.HandleFunc("/withdraw", middlewares.CheckJwt(h.Withdraw)).Methods(http.MethodPost)
+	router.HandleFunc("/check-account-balance", middlewares.CheckJwt(h.CheckAccountBalance)).Methods(http.MethodPost)
+	router.HandleFunc("/check-contract-balance", middlewares.CheckJwt(h.CheckContractBalance)).Methods(http.MethodGet)
 	fmt.Println("Listening to port 8000")
 	log.Fatal(http.ListenAndServe(":8000", router))
 }

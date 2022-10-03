@@ -23,7 +23,44 @@ contract OnlineTest {
         address winnerAddr; // Winnner address
         uint submitTime;    // time submit
     }
+    event ChooseAdmin(
+        address indexed adminAddress,
+        uint adminEntranceFee,
+        address indexed contractOwner
+    );
+    event CreateExam(
+        uint examCode,
+        address indexed adminAddress,
+        uint reward,
+        uint userSubmitFee
+    );
+    event SubmitTest(
+        uint examCode,
+        address indexed userAddress,
+        string answer,
+        uint submitTime
+    );
+    event EndSubmit(
+        uint examCode,
+        address indexed adminAddress
+    );
 
+    event SubmitAnswer(
+        uint examCode,
+        address indexed adminAddress,
+        string answer
+    );
+    event CaculateWinner(
+       uint examCode,
+       address indexed adminAddress,
+       Winner[] winners
+    );
+
+    event WithDraw(
+        address indexed contractOwner,
+        uint examFund
+    );
+    
     address public contractOwner; // Address of contract owner
     address public adminAddr; //admin who create the exam
     uint public adminEntranceFee; // contract owner decide how much fee admin need to pay when create exam
@@ -41,6 +78,7 @@ contract OnlineTest {
         require(msg.sender==contractOwner, "To choose Admin you must be contract owner!");
         adminAddr=_adminAddr; // init Admin for creating the exam
         adminEntranceFee=_adminEntranceFee;// init admin entranceFee
+        emit ChooseAdmin(_adminAddr,_adminEntranceFee,contractOwner);
     }
    
     modifier satisfyCondition() {   // Check satisfy all condition and ready to create Exam
@@ -60,6 +98,7 @@ contract OnlineTest {
         exams[examCode].examState=EXAM_STATE.OPEN; //set state
         exams[examCode].userSubmitFee=_userSubmitFee; // set user submit fee
         examFund += adminEntranceFee;
+        emit CreateExam(examCode, msg.sender, _reward, _userSubmitFee);
     }
 
     function submitTest(uint _examCode,string memory _answer) public payable { // user submit their exam
@@ -73,12 +112,14 @@ contract OnlineTest {
         userExam.submitTime = block.timestamp;
         userExams.push(userExam);
         examFund += exams[_examCode].userSubmitFee;
+        emit SubmitTest(_examCode, msg.sender, _answer, userExam.submitTime);
     }
 
     function endSubmit(uint _examCode) public { // admin end all user submit
         require(msg.sender==exams[_examCode].adminAddr,"You need to be Admin to end submit!");
         require(exams[_examCode].examState==EXAM_STATE.OPEN,"Admin Can't end submit yet!");
         exams[_examCode].examState=EXAM_STATE.ENDSUBMIT; // Change state to ENDSUBMIT
+        emit EndSubmit(_examCode, msg.sender);
     }
 
     function submitAnswer(uint _examCode, string memory _answer) public { // Admin submit answer
@@ -86,6 +127,7 @@ contract OnlineTest {
         require(exams[_examCode].examState==EXAM_STATE.ENDSUBMIT,"Admin Can't submit answer yet!");
         exams[_examCode].answer = _answer;
         exams[_examCode].examState=EXAM_STATE.CACULATING_WINNER; // Change state to Caculate winner
+        emit SubmitAnswer(_examCode, msg.sender, _answer);
     }
     function caculateWinner(uint _examCode) public { // Caculate winner
         require(exams[_examCode].adminAddr == msg.sender,"Only admin can caculate winner!");
@@ -122,9 +164,11 @@ contract OnlineTest {
                 payable(winners[i].winnerAddr).transfer(_reward);
             }
         }
+        emit CaculateWinner(_examCode, msg.sender, winners);
         //reset
-        winners = clear;
         exams[_examCode].examState = EXAM_STATE.CLOSED;
+        winners = clear;
+        
     
     }
     // Function to receive Ether. msg.data must be empty
@@ -139,6 +183,7 @@ contract OnlineTest {
     function withdraw() public payable  { // with draw fund exam
         require(msg.sender == contractOwner,"You must be contract owner to withdraw money!");
         payable(contractOwner).transfer(examFund); 
+        emit WithDraw(msg.sender, examFund);
     }
 
     

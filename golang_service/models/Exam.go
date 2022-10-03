@@ -1,9 +1,8 @@
 package models
 
 type Exam struct {
-	reward        uint64
-	examCode      string
-	adminAddr     string
-	answer        string
-	userSubmitFee string
+	Reward   int    `json:"reward" gorm:"column:reward"`
+	ExamCode int    `json:"exam_code" gorm:"primaryKey;column:exam_code"`
+	Answer   string `json:"answer" gorm:"column:answer"`
+	Fee      int    `json:"fee" gorm:"column:fee"`
 }

@@ -1,47 +1,26 @@
 package db
 
 import (
-	"context"
+	"golang_service/models"
 	"log"
 
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
-func ConnectUsers() *mongo.Collection {
-	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017/golang")
-	client, err := mongo.Connect(context.TODO(), clientOptions)
+func Init() *gorm.DB {
+	dsn := "host=localhost user=postgres password=postgres dbname=test_online port=5432 sslmode=disable TimeZone=Asia/Shanghai"
+	//dbURL := "postgres://postgres:postgres@localhost:5432/test_online"
+
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalln(err)
 	}
 
-	// Check the connection
-	err = client.Ping(context.TODO(), nil)
+	db.AutoMigrate(&models.Exam{})
+	db.AutoMigrate(&models.UserExam{})
+	db.AutoMigrate(&models.User{})
 
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	collection := client.Database("golang").Collection("users")
-	return collection
+	return db
 }
-
-// func ConnectAlbums() *mongo.Collection {
-// 	clientOptions := options.Client().ApplyURI(os.Getenv("MONGODB_URI"))
-// 	client, err := mongo.Connect(context.TODO(), clientOptions)
-
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-
-// 	// Check the connection
-// 	err = client.Ping(context.TODO(), nil)
-
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-
-// 	collection := client.Database("golang").Collection("albums")
-// 	return collection
-// }

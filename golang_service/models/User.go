@@ -8,13 +8,13 @@ import (
 )
 
 type User struct {
-	Username   string `json:"username"`
-	Email      string `json:"email"`
-	Password   string `json:"password"`
-	Answer     string
-	SubmitTime string
-	ExamCode   uint64
-	UserAddr   string
+	ID         int    `json:"id" gorm:"column:id;"`
+	UserName   string `json:"user_name" gorm:"column:user_name;"`
+	Email      string `json:"email" gorm:"column:email;"`
+	Password   string `json:"password" gorm:"column:password;size:1000"`
+	Address    string `json:"address" gorm:"column:address;"`
+	PrivateKey string `json:"private_key" gorm:"column:private_key;"`
+	Role       string `json:"role" gorm:"column:role;"`
 }
 
 func Hash(password string) (string, error) {
