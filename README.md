@@ -1,2 +1,2 @@
 # testing-online
-Golang service for testing online on blockchain
+Golang service for admin hold a testing online for many user participate on blockchain
