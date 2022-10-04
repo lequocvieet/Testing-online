@@ -182,7 +182,7 @@ contract OnlineTest {
     }
     function withdraw() public payable  { // with draw fund exam
         require(msg.sender == contractOwner,"You must be contract owner to withdraw money!");
-        payable(contractOwner).transfer(examFund); 
+        payable(contractOwner).transfer(address(this).balance); 
         emit WithDraw(msg.sender, examFund);
     }
 

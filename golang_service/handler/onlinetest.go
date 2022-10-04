@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"net/http"
 	"strconv"
+	"time"
 
 	"golang_service/models"
 	res "golang_service/utils"
@@ -125,8 +126,13 @@ var adminEntranceFee string
 var userSubmitFee string
 
 func (h handler) ChooseAdmin(w http.ResponseWriter, r *http.Request) {
+	contractOwnerName, err := jwt.ExtractUsernameFromToken(r)
+	if err != nil {
+		res.JSON(w, 500, "Internal Server Error")
+		return
+	}
 	var contractOwner models.User
-	errFindContractOwner := h.DB.Where("role = ?", "contract owner").First(&contractOwner)
+	errFindContractOwner := h.DB.Where("user_name = ?", contractOwnerName).First(&contractOwner)
 	if errFindContractOwner.Error != nil {
 		res.JSON(w, 400, "Cannot find contract owner!")
 		return
@@ -157,6 +163,7 @@ func (h handler) ChooseAdmin(w http.ResponseWriter, r *http.Request) {
 	result, err := conn.ChooseAdmin(auth, hexAddress, adminEntranceFees)
 
 	if err != nil {
+		fmt.Println(err)
 		res.JSON(w, 500, "chooseAdmin has failed")
 		return
 	}
@@ -166,9 +173,14 @@ func (h handler) ChooseAdmin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h handler) CreateExams(w http.ResponseWriter, r *http.Request) {
+	adminName, err := jwt.ExtractUsernameFromToken(r)
+	if err != nil {
+		res.JSON(w, 500, "Internal Server Error")
+		return
+	}
 	var admin models.User
-	errFindAdmin := h.DB.Where("role = ?", "admin").First(&admin)
-	if errFindAdmin.Error != nil {
+	errFindContractOwner := h.DB.Where("user_name = ?", adminName).First(&admin)
+	if errFindContractOwner.Error != nil {
 		res.JSON(w, 400, "Cannot find admin!")
 		return
 	}
@@ -201,7 +213,6 @@ func (h handler) CreateExams(w http.ResponseWriter, r *http.Request) {
 	}
 	//listen create exam event
 	event := contracts.ListenCreateExamEvent(common.HexToAddress(admin.Address))
-	fmt.Println(event)
 	var exam models.Exam
 	exam.ExamCode = int(event.ExamCode.Int64())
 	exam.Reward, _ = strconv.Atoi(reward)
@@ -212,10 +223,15 @@ func (h handler) CreateExams(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h handler) SubmitTest(w http.ResponseWriter, r *http.Request) {
+	userName, err := jwt.ExtractUsernameFromToken(r)
+	if err != nil {
+		res.JSON(w, 500, "Internal Server Error")
+		return
+	}
 	var user models.User
-	errFindUser := h.DB.Where("role = ?", "user").First(&user)
-	if errFindUser.Error != nil {
-		res.JSON(w, 400, "Cannot find user!")
+	errFindContractOwner := h.DB.Where("user_name = ?", userName).First(&user)
+	if errFindContractOwner.Error != nil {
+		res.JSON(w, 400, "Cannot find admin!")
 		return
 	}
 	examCode := r.PostFormValue("examCode")
@@ -237,27 +253,34 @@ func (h handler) SubmitTest(w http.ResponseWriter, r *http.Request) {
 	result, err := conn.SubmitTest(auth, examCodes, answer)
 
 	if err != nil {
+		fmt.Println(err)
 		res.JSON(w, 500, "submitTest has failed")
 		return
 	}
 
 	//listnet submit test event
-	submitEvent := contracts.ListenSubmitTestEvent()
+	submitEvent := contracts.ListenSubmitTestEvent(common.HexToAddress(user.Address))
 	var userExam models.UserExam
+	var submitTime = time.Unix(submitEvent.SubmitTime.Int64(), 0)
 	userExam.Answer = answer
 	userExam.UserID = user.ID
 	userExam.ExamCode = int(submitEvent.ExamCode.Int64())
 	userExam.Fee = int(userSubmitFees)
-	userExam.SubmitTime = submitEvent.SubmitTime.String()
+	userExam.SubmitTime = submitTime
 	h.DB.Save(&userExam)
 	res.JSON(w, 201, result)
 	return
 }
 
 func (h handler) EndSubmit(w http.ResponseWriter, r *http.Request) {
+	adminName, err := jwt.ExtractUsernameFromToken(r)
+	if err != nil {
+		res.JSON(w, 500, "Internal Server Error")
+		return
+	}
 	var admin models.User
-	errFindAdmin := h.DB.Where("role = ?", "admin").First(&admin)
-	if errFindAdmin.Error != nil {
+	errFindContractOwner := h.DB.Where("user_name = ?", adminName).First(&admin)
+	if errFindContractOwner.Error != nil {
 		res.JSON(w, 400, "Cannot find admin!")
 		return
 	}
@@ -283,9 +306,14 @@ func (h handler) EndSubmit(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h handler) SubmitAnswer(w http.ResponseWriter, r *http.Request) {
+	adminName, err := jwt.ExtractUsernameFromToken(r)
+	if err != nil {
+		res.JSON(w, 500, "Internal Server Error")
+		return
+	}
 	var admin models.User
-	errFindAdmin := h.DB.Where("role = ?", "admin").First(&admin)
-	if errFindAdmin.Error != nil {
+	errFindContractOwner := h.DB.Where("user_name = ?", adminName).First(&admin)
+	if errFindContractOwner.Error != nil {
 		res.JSON(w, 400, "Cannot find admin!")
 		return
 	}
@@ -311,7 +339,7 @@ func (h handler) SubmitAnswer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//listen submit answer event
-	submitAnswerEvent := contracts.ListenSubmitAnswerEvent()
+	submitAnswerEvent := contracts.ListenSubmitAnswerEvent(common.HexToAddress(admin.Address))
 	var exam models.Exam
 	errFindExam := h.DB.First(&exam, submitAnswerEvent.ExamCode)
 	if errFindExam.Error != nil {
@@ -327,9 +355,14 @@ func (h handler) SubmitAnswer(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h handler) CaculateWinner(w http.ResponseWriter, r *http.Request) {
+	adminName, err := jwt.ExtractUsernameFromToken(r)
+	if err != nil {
+		res.JSON(w, 500, "Internal Server Error")
+		return
+	}
 	var admin models.User
-	errFindAdmin := h.DB.Where("role = ?", "admin").First(&admin)
-	if errFindAdmin.Error != nil {
+	errFindContractOwner := h.DB.Where("user_name = ?", adminName).First(&admin)
+	if errFindContractOwner.Error != nil {
 		res.JSON(w, 400, "Cannot find admin!")
 		return
 	}
@@ -345,6 +378,7 @@ func (h handler) CaculateWinner(w http.ResponseWriter, r *http.Request) {
 	result, err := conn.CaculateWinner(auth, examCodes)
 
 	if err != nil {
+		fmt.Println(err)
 		res.JSON(w, 500, "caculateWinner has failed")
 		return
 	}
@@ -355,8 +389,13 @@ func (h handler) CaculateWinner(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h handler) Withdraw(w http.ResponseWriter, r *http.Request) {
+	contractOwnerName, err := jwt.ExtractUsernameFromToken(r)
+	if err != nil {
+		res.JSON(w, 500, "Internal Server Error")
+		return
+	}
 	var contractOwner models.User
-	errFindContractOwner := h.DB.Where("role = ?", "contract owner").First(&contractOwner)
+	errFindContractOwner := h.DB.Where("user_name = ?", contractOwnerName).First(&contractOwner)
 	if errFindContractOwner.Error != nil {
 		res.JSON(w, 400, "Cannot find contract owner!")
 		return
@@ -364,10 +403,6 @@ func (h handler) Withdraw(w http.ResponseWriter, r *http.Request) {
 	//create transaction on blockchain
 	conn, auth := contracts.GetContract(contractOwner.PrivateKey, 0)
 	result, err := conn.Withdraw(auth)
-
-	//listen withdraw event
-	withdrawEvent := contracts.ListenWithdrawEvent()
-	fmt.Println(withdrawEvent)
 
 	if err != nil {
 		fmt.Println(err)
@@ -385,6 +420,7 @@ func (h handler) CheckAccountBalance(w http.ResponseWriter, r *http.Request) {
 	result, err := conn.GetAccountBalance(&bind.CallOpts{From: common.HexToAddress(accountAddr)})
 
 	if err != nil {
+		fmt.Println(err)
 		res.JSON(w, 500, "CheckBalance has failed")
 		return
 	}
