@@ -1,2 +1,2 @@
 # testing-online
-Golang service for admin hold a testing online for many user participate on blockchain
+Golang service for admin hold an exam testing online on blockchain where many users can participate in. 
